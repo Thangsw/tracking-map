@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { TrackingPoint } from './App';
@@ -121,8 +121,8 @@ export default function MapComponent({ points, selectedLatLng, onMapClick }: Map
               <div class="marker-number">#${index + 1}</div>
             </div>
           `,
-          iconSize: [30, 30],
-          iconAnchor: [15, 15]
+          iconSize: [50, 50],
+          iconAnchor: [25, 25]
         });
 
         return (

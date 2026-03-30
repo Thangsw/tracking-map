@@ -394,52 +394,54 @@ input[type="file"].form-control {
   align-items: center;
   justify-content: center;
   position: relative;
-  width: 30px;
-  height: 40px;
+  width: 50px; /* Tăng kích thước để không bị clip label */
+  height: 50px;
 }
 
 .marker-dot {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   background-color: #3498db;
-  border: 2px solid white;
+  border: 3px solid #fff;
   border-radius: 50%;
-  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+  box-shadow: 0 0 10px rgba(0,0,0,0.6), 0 0 5px rgba(52, 152, 219, 0.8);
   z-index: 2;
+  transition: all 0.3s;
 }
 
 .marker-number {
   position: absolute;
-  top: -12px;
-  background: rgba(0, 0, 0, 0.8);
+  bottom: 0; /* Cho số xuống dưới điểm cho dễ nhìn */
+  background: #2f3542;
   color: white;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 800;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   z-index: 3;
 }
 
 /* First point (Start) special style */
 .first-point .marker-dot {
   background-color: #ff4757;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  border-color: #fff;
   animation: marker-pulse 1.5s infinite;
+  box-shadow: 0 0 15px rgba(255, 71, 87, 0.8);
 }
 
 .first-point .marker-number {
   background: #ff4757;
-  top: -14px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 @keyframes marker-pulse {
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
-  70% { transform: scale(1.1); box-shadow: 0 0 0 12px rgba(255, 71, 87, 0); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(255, 71, 87, 0); }
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
 }
 
