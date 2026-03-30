@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { TrackingPoint } from './App';
+import type { TrackingPoint } from './App';
 
 // Setup custom markers to bypass webpack icon issues in standard leaflet
 const redIcon = new L.Icon({
