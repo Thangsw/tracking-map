@@ -77,9 +77,12 @@ function RoadRouting({ points }: { points: TrackingPoint[] }) {
     fetchRoute();
   }, [points]);
 
-  return routeCoords.length > 0 ? (
-    <Polyline positions={routeCoords} color="#ff4757" weight={5} opacity={0.7} dashArray="10, 10" lineJoin="round" />
-  ) : null;
+  return (
+    <>
+      <Polyline positions={routeCoords} color="#ff4757" weight={6} opacity={0.8} lineJoin="round" />
+      <Polyline positions={routeCoords} color="white" weight={2} opacity={0.4} dashArray="5, 10" lineJoin="round" />
+    </>
+  );
 }
 
 interface MapComponentProps {
@@ -107,32 +110,42 @@ export default function MapComponent({ points, selectedLatLng, onMapClick }: Map
       <MapAutoBounder points={points} />
       <RoadRouting points={points} />
 
-      {/* Simple DOS Dots for Tracking Points */}
-      {points.map((p, index) => (
-        <CircleMarker
-          key={p.id}
-          center={[p.lat, p.lng]}
-          radius={7}
-          pathOptions={{
-            color: index === 0 ? '#ff4757' : '#3498db',
-            fillColor: index === 0 ? '#ff4757' : '#3498db',
-            fillOpacity: 1,
-            weight: 2
-          }}
-        >
-          <Popup className="custom-popup">
-            <div className="tooltip-content">
-              <span className="tooltip-time">
-                #{index + 1} - {new Date(p.timestamp).toLocaleString('vi-VN', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})}
-              </span>
-              <span className="tooltip-desc">{p.description}</span>
-              <span className="tooltip-coord">
-                📍 {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
-              </span>
+      {/* Enhanced Technical Markers for Tracking Points */}
+      {points.map((p, index) => {
+        const isFirst = index === 0;
+        const markerIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `
+            <div class="marker-pin-wrapper ${isFirst ? 'first-point' : ''}">
+              <div class="marker-dot"></div>
+              <div class="marker-number">#${index + 1}</div>
             </div>
-          </Popup>
-        </CircleMarker>
-      ))}
+          `,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15]
+        });
+
+        return (
+          <Marker
+            key={p.id}
+            position={[p.lat, p.lng]}
+            icon={markerIcon}
+          >
+            <Popup className="custom-popup">
+              <div className="tooltip-content">
+                <span className="tooltip-time">
+                  #{index + 1} - {new Date(p.timestamp).toLocaleString('vi-VN', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})}
+                </span>
+                <span className="tooltip-desc">{p.description}</span>
+                {p.notes && <p className="tooltip-notes">{p.notes}</p>}
+                <span className="tooltip-coord">
+                  📍 {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
+                </span>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
 
       {/* Existing popup for the clicked (but not yet saved) location */}
       {selectedLatLng && (

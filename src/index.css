@@ -382,6 +382,79 @@ input[type="file"].form-control {
   margin-top: 2px;
 }
 
+/* Custom Div Markers */
+.custom-div-icon {
+  background: none !important;
+  border: none !important;
+}
+
+.marker-pin-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 30px;
+  height: 40px;
+}
+
+.marker-dot {
+  width: 14px;
+  height: 14px;
+  background-color: #3498db;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+  z-index: 2;
+}
+
+.marker-number {
+  position: absolute;
+  top: -12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  z-index: 3;
+}
+
+/* First point (Start) special style */
+.first-point .marker-dot {
+  background-color: #ff4757;
+  width: 18px;
+  height: 18px;
+  animation: marker-pulse 1.5s infinite;
+}
+
+.first-point .marker-number {
+  background: #ff4757;
+  top: -14px;
+  font-size: 11px;
+}
+
+@keyframes marker-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 12px rgba(255, 71, 87, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+}
+
+/* Tooltip updates */
+.tooltip-notes {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #ccc;
+  font-style: italic;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 4px;
+  max-width: 200px;
+  white-space: pre-wrap;
+}
+
 /* Mobile responsive refinements */
 @media (max-width: 600px) {
   .custom-tooltip {

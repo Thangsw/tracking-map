@@ -42,7 +42,11 @@ function App() {
   const fetchPoints = async () => {
     try {
       const res = await axios.get(API_URL);
-      setPoints(res.data);
+      // Sắp xếp các điểm theo thời gian tăng dần
+      const sortedPoints = (res.data as TrackingPoint[]).sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+      setPoints(sortedPoints);
     } catch (err) {
       console.error('Error fetching points', err);
     }
