@@ -261,28 +261,33 @@ function App() {
       </div>
 
       {/* FABs */}
-      <div className="fab-container left">
-        <button 
-          className={`fab-extended ${isPinningMode ? 'active' : ''}`}
-          onClick={() => setIsPinningMode(!isPinningMode)}
-          style={{ background: isPinningMode ? '#ff4757' : '#2f3542' }}
-        >
-          {isPinningMode ? <X size={20} /> : <Plus size={20} />}
-          <span>{isPinningMode ? "Hủy ghim" : "Ghim trên bản đồ"}</span>
-        </button>
-      </div>
+      {!isFormOpen && (
+        <div className="fab-container left">
+          <button 
+            className={`fab-extended ${isPinningMode ? 'active' : ''}`}
+            onClick={() => setIsPinningMode(!isPinningMode)}
+            style={{ background: isPinningMode ? '#ff4757' : '#2f3542', boxShadow: isPinningMode ? '0 0 15px rgba(255, 71, 87, 0.5)' : '' }}
+          >
+            {isPinningMode ? <X size={20} /> : <Plus size={20} />}
+            <span>{isPinningMode ? "Hủy ghim" : "Ghim trên bản đồ"}</span>
+          </button>
+        </div>
+      )}
 
       {!isFormOpen && (
         <div className="fab-container left-sub">
-           <button 
-            className="fab" 
+          <button 
+            className="fab fab-extended" 
             onClick={() => {
               setIsFormOpen(true);
               setEditingPointId(null);
               resetForm();
+              setSheetOpen('form');
             }}
+            style={{ background: '#3498db', boxShadow: '0 4px 15px rgba(52, 152, 219, 0.4)' }}
           >
-            <Plus size={24} />
+            <Plus size={22} />
+            <span>Thêm dấu vết</span>
           </button>
         </div>
       )}
