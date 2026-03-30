@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, Tooltip, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { TrackingPoint } from './App';
@@ -78,17 +78,17 @@ export default function MapComponent({ points, selectedLatLng, onMapClick }: Map
           }}
         >
           {/* Always display this floating label next to the dot without needing a click */}
-          <Tooltip direction="right" offset={[10, 0]} opacity={0.9} permanent className="custom-tooltip">
+          <Popup className="custom-popup">
             <div className="tooltip-content">
               <span className="tooltip-time">
-                {new Date(p.timestamp).toLocaleString('vi-VN', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})}
+                #{index + 1} - {new Date(p.timestamp).toLocaleString('vi-VN', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})}
               </span>
               <span className="tooltip-desc">{p.description}</span>
               <span className="tooltip-coord">
                 📍 {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
               </span>
             </div>
-          </Tooltip>
+          </Popup>
         </CircleMarker>
       ))}
 
