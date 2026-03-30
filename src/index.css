@@ -399,28 +399,33 @@ input[type="file"].form-control {
 }
 
 .marker-dot {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   background-color: #3498db;
-  border: 3px solid #fff;
+  border: 4px solid #fff;
   border-radius: 50%;
-  box-shadow: 0 0 10px rgba(0,0,0,0.6), 0 0 5px rgba(52, 152, 219, 0.8);
+  box-shadow: 
+    0 0 10px rgba(52, 152, 219, 0.9), 
+    0 0 5px rgba(0,0,0,0.5),
+    inset 0 0 4px rgba(0,0,0,0.5);
   z-index: 2;
   transition: all 0.3s;
 }
 
 .marker-number {
   position: absolute;
-  bottom: 0; /* Cho số xuống dưới điểm cho dễ nhìn */
-  background: #2f3542;
+  top: 18px; /* Xuống dưới hẳn so với dot */
+  background: rgba(47, 53, 66, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   color: white;
-  padding: 2px 8px;
+  padding: 1px 8px;
   border-radius: 4px;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 900;
   border: 1px solid rgba(255, 255, 255, 0.4);
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
   z-index: 3;
 }
 
