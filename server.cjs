@@ -37,6 +37,27 @@ const writeData = (data) => {
   fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
 };
 
+/**
+ * Trích xuất tọa độ (latitude, longitude) từ một URL của Google Maps.
+ * @param {string} url - Đường link Google Maps.
+ * @returns {{lat: number, lng: number}|null} - Object chứa lat/lng hoặc null nếu không tìm thấy.
+ */
+const extractCoordsFromUrl = (url) => {
+  if (typeof url !== 'string') return null;
+
+  // Regex tìm kiếm pattern @<latitude>,<longitude>
+  const match = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+
+  if (match && match[1] && match[2]) {
+    return {
+      lat: parseFloat(match[1]),
+      lng: parseFloat(match[2]),
+    };
+  }
+  return null;
+};
+
+
 // Storage setup for Multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -63,13 +84,28 @@ app.get('/api/points', (req, res) => {
 // Add a new point
 app.post('/api/points', upload.single('media'), (req, res) => {
   try {
-    const data = fs.readFileSync(dataFile, 'utf8');
-    const points = JSON.parse(data);
+    const points = readData(); // Đọc dữ liệu bằng hàm hỗ trợ
+
+    let lat, lng;
+    
+    // Dữ liệu nhập vào có thể là URL (dán vào ô Vĩ độ) hoặc vĩ độ/kinh độ riêng
+    const potentialUrl = req.body.lat; 
+    const coords = extractCoordsFromUrl(potentialUrl);
+
+    if (coords) {
+      // Tìm thấy tọa độ từ URL
+      lat = coords.lat;
+      lng = coords.lng;
+    } else {
+      // Không phải URL hoặc không có tọa độ, coi như nhập tay
+      lat = parseFloat(req.body.lat);
+      lng = parseFloat(req.body.lng);
+    }
 
     const newPoint = {
       id: Date.now().toString(),
-      lat: parseFloat(req.body.lat),
-      lng: parseFloat(req.body.lng),
+      lat: lat,
+      lng: lng,
       timestamp: req.body.timestamp || new Date().toISOString(),
       description: req.body.description || '',
       notes: req.body.notes || '',
@@ -78,13 +114,14 @@ app.post('/api/points', upload.single('media'), (req, res) => {
       mediaType: req.file ? req.file.mimetype : null
     };
 
-    points.push(newPoint);
-    
-    // Sort chronologically
-    points.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    // Kiểm tra lại tọa độ trước khi lưu
+    if (isNaN(newPoint.lat) || isNaN(newPoint.lng)) {
+        return res.status(400).json({ error: 'Tọa độ không hợp lệ. Vui lòng dùng link Google Maps có chứa "@" hoặc nhập vĩ độ/kinh độ thủ công.' });
+    }
 
-    fs.writeFileSync(dataFile, JSON.stringify(points, null, 2));
-    res.json({ message: 'Thêm điểm thành công', data: newPoint });
+    points.push(newPoint);
+    writeData(points); // Ghi dữ liệu bằng hàm hỗ trợ
+    res.status(201).json({ message: 'Thêm điểm thành công', data: newPoint });
 
   } catch (err) {
     console.error(err);

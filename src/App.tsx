@@ -232,12 +232,15 @@ function App() {
       </div>
 
       {/* FLOATING ACTION BUTTONS */}
-      <div className="fab-container">
+      <div className="fab-container-left">
+        <button className="fab fab-extended" onClick={() => { resetForm(); setSheetOpen('form'); }} title="Báo cáo mới">
+          <Plus size={22} /> Thêm dấu vết
+        </button>
+      </div>
+
+      <div className="fab-container-right">
         <button className="fab fab-secondary" onClick={() => setSheetOpen('list')} title="Nhật ký">
           <List size={24} />
-        </button>
-        <button className="fab" onClick={() => { resetForm(); setSheetOpen('form'); }} title="Báo cáo mới">
-          <Plus size={28} />
         </button>
       </div>
 
@@ -319,32 +322,41 @@ function App() {
         </div>
         <div className="point-list">
           {points.length === 0 && <p style={{color: '#888'}}>Chưa có dữ liệu.</p>}
-          {points.map((p, idx) => (
-            <div key={p.id} className="point-item">
-              <div className="point-item-header">
-                <strong>
-                  <MapPin size={14} color={idx === 0 ? "#ff4757" : "#3498db"} style={{marginRight: '4px', verticalAlign: 'middle'}}/>
-                </strong>
-                <span className="point-time">{new Date(p.timestamp).toLocaleTimeString('vi-VN')}</span>
-              </div>
-              <p style={{fontSize: '0.95rem', fontWeight: 'bold', color: '#fff'}}>{p.description}</p>
-              {p.notes && <p style={{fontSize: '0.85rem', color: '#bbb', marginTop: '4px', whiteSpace: 'pre-wrap'}}>{p.notes}</p>}
-              
-              {p.mediaUrl && (
-                <div style={{marginTop: '8px'}}>
-                  {p.mediaType?.includes('video') ? (
-                    <video src={p.mediaUrl ?? ''} controls className="popup-image" />
-                  ) : (
-                    <img src={p.mediaUrl ?? ''} alt="Sighting" className="popup-image" />
-                  )}
+          {points.map((p, idx) => {
+            const pointDate = new Date(p.timestamp);
+            const timeFormat = pointDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            const dateFormat = pointDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            return (
+              <div key={p.id} className="point-item">
+                <div className="point-item-header">
+                  <strong>#{idx + 1}</strong>
+                  <span className="point-time">{`${timeFormat} ngày ${dateFormat}`}</span>
                 </div>
-              )}
-              <div className="point-actions">
-                <button className="btn-small" onClick={() => handleEdit(p)}><Edit size={12}/> Sửa</button>
-                <button className="btn-small btn-delete" onClick={() => handleDelete(p.id)}><Trash2 size={12}/> Xóa</button>
+                <p style={{fontSize: '0.95rem', fontWeight: 'bold', color: '#fff', marginTop: '4px'}}>{p.description}</p>
+                
+                {p.notes && <p style={{fontSize: '0.85rem', color: '#bbb', marginTop: '4px', whiteSpace: 'pre-wrap'}}>{p.notes}</p>}
+
+                <p style={{fontSize: '0.8rem', color: '#888', marginTop: '8px'}}>
+                  Tọa độ: {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
+                </p>
+
+                {p.mediaUrl && (
+                  <div style={{marginTop: '12px'}}>
+                    {p.mediaType?.includes('video') ? (
+                      <video src={p.mediaUrl ?? ''} controls className="popup-image" />
+                    ) : (
+                      <img src={p.mediaUrl ?? ''} alt="Sighting" className="popup-image" />
+                    )}
+                  </div>
+                )}
+                <div className="point-actions">
+                  <button className="btn-small" onClick={() => handleEdit(p)}><Edit size={12}/> Sửa</button>
+                  <button className="btn-small btn-delete" onClick={() => handleDelete(p.id)}><Trash2 size={12}/> Xóa</button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

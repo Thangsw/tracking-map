@@ -84,14 +84,18 @@ body {
 }
 
 /* Floating Action Buttons */
-.fab-container {
+.fab-container-left {
   position: absolute;
-  bottom: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  left: 16px;
+  z-index: 1000;
+  pointer-events: auto;
+}
+.fab-container-right {
+  position: absolute;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   right: 16px;
   z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   pointer-events: auto;
 }
 .fab {
@@ -116,6 +120,14 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255,255,255,0.1);
   color: #fff;
+}
+.fab-extended {
+  width: auto;
+  padding: 0 20px;
+  border-radius: 28px;
+  font-weight: 600;
+  font-size: 1rem;
+  gap: 8px;
 }
 
 /* Bottom Sheet */
