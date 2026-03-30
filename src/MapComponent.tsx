@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, Tooltip, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { TrackingPoint } from './App';
 
-// Setup custom markers to bypass webpack icon issues in standard leaflet
+// Setup custom marker for current clicked location ONLY
 const redIcon = new L.Icon({
   iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -14,17 +14,8 @@ const redIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-const blueIcon = new L.Icon({
-  iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-
 // Component to handle clicks on the map to set a new point
-function ClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
+export function ClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
   useMapEvents({
     click(e) {
       onMapClick(e.latlng.lat, e.latlng.lng);
@@ -34,7 +25,7 @@ function ClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) =
 }
 
 // Map automatically bounds to see all tracking points
-function MapAutoBounder({ points }: { points: TrackingPoint[] }) {
+export function MapAutoBounder({ points }: { points: TrackingPoint[] }) {
   const map = useMap();
   useEffect(() => {
     if (points.length > 0) {
@@ -52,9 +43,7 @@ interface MapComponentProps {
 }
 
 export default function MapComponent({ points, selectedLatLng, onMapClick }: MapComponentProps) {
-  // Center is roughly at Hoa Binh / Tan Lac area
   const initCenter: [number, number] = [20.7335, 105.2933];
-
   const polylinePositions = points.map(p => [p.lat, p.lng] as [number, number]);
 
   return (
@@ -64,10 +53,9 @@ export default function MapComponent({ points, selectedLatLng, onMapClick }: Map
       style={{ height: '100%', width: '100%' }}
       zoomControl={true}
     >
-      {/* Cool Dark theme map tiles */}
       <TileLayer
-        attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       
       <ClickHandler onMapClick={onMapClick} />
@@ -76,36 +64,38 @@ export default function MapComponent({ points, selectedLatLng, onMapClick }: Map
       {/* Polyline connecting the chronological spots */}
       <Polyline positions={polylinePositions} color="#ff4757" weight={4} dashArray="5, 10" />
 
-      {/* Markers for existing tracking points */}
+      {/* Simple DOS Dots for Tracking Points instead of huge Marker pins */}
       {points.map((p, index) => (
-        <Marker 
-          key={p.id} 
-          position={[p.lat, p.lng]} 
-          icon={index === 0 ? redIcon : blueIcon}
+        <CircleMarker
+          key={p.id}
+          center={[p.lat, p.lng]}
+          radius={7}
+          pathOptions={{
+            color: index === 0 ? '#ff4757' : '#3498db',
+            fillColor: index === 0 ? '#ff4757' : '#3498db',
+            fillOpacity: 1,
+            weight: 2
+          }}
         >
-          <Popup>
-            <div style={{minWidth: '150px'}}>
-              <h3 style={{margin: '0 0 5px 0', color: '#ff4757'}}>Điểm #{index + 1}</h3>
-              <p style={{margin: '0 0 5px 0', fontSize: '12px', color: '#888'}}>
-                {new Date(p.timestamp).toLocaleString('vi-VN')}
-              </p>
-              <p style={{margin: '0'}}>{p.description}</p>
-              {p.mediaUrl && (
-                p.mediaType?.includes('video') ? (
-                  <video src={`http://localhost:3001${p.mediaUrl}`} controls className="popup-image" />
-                ) : (
-                  <img src={`http://localhost:3001${p.mediaUrl}`} alt="Bằng chứng" className="popup-image" />
-                )
-              )}
+          {/* Always display this floating label next to the dot without needing a click */}
+          <Tooltip direction="right" offset={[10, 0]} opacity={0.9} permanent className="custom-tooltip">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span style={{ color: '#ff4757', fontWeight: 700 }}>
+                {new Date(p.timestamp).toLocaleString('vi-VN', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})}
+              </span>
+              <span style={{ fontWeight: 600 }}>{p.description}</span>
+              <span style={{ fontSize: '0.75rem', color: '#aaa', marginTop: '2px' }}>
+                📍 {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
+              </span>
             </div>
-          </Popup>
-        </Marker>
+          </Tooltip>
+        </CircleMarker>
       ))}
 
-      {/* Marker for current clicked location */}
+      {/* Existing popup for the clicked (but not yet saved) location */}
       {selectedLatLng && (
         <Marker position={[selectedLatLng.lat, selectedLatLng.lng]} icon={redIcon}>
-          <Popup>Vị trí đang chọn để báo cáo</Popup>
+          <Popup>Vị trí bạn đang chọn</Popup>
         </Marker>
       )}
     </MapContainer>

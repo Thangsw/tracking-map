@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "id": "1774848241368",
+    "lat": 20.650035,
+    "lng": 105.1565077,
+    "timestamp": "2026-03-28T01:03:00.000Z",
+    "description": "Xe 19AB-921.74 Trộm trước đường vào CA Phú Cường cũ lúc 08h03 ngày 28/3/2026.\r\n",
+    "type": "sighting",
+    "mediaUrl": null,
+    "mediaType": null
+  },
+  {
+    "id": "1774845485546",
+    "lat": 20.7607836,
+    "lng": 105.3345155,
+    "timestamp": "2026-03-28T08:25:00.000Z",
+    "description": "Vị trí 02 đối tượng đi qua vẫn đi 2 xe máy",
+    "type": "stolen_location",
+    "mediaUrl": null,
+    "mediaType": null
+  }
+]

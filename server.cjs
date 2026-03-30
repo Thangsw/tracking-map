@@ -7,18 +7,39 @@ const multer = require('multer');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Cấu hình lưu trữ Volume ngoài (Railway)
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const uploadDir = path.join(DATA_DIR, 'uploads');
+const dataFile = path.join(DATA_DIR, 'data.json');
+
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(uploadDir));
+
+// Đảm bảo thư mục lưu trữ tồn tại
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Hàm hỗ trợ đọc ghi
+const readData = () => {
+  if (!fs.existsSync(dataFile)) return [];
+  return JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+};
+
+const writeData = (data) => {
+  // Sắp xếp theo thời gian gốc trước khi lưu xuống Ổ cứng
+  data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+};
 
 // Storage setup for Multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
-    }
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
@@ -28,7 +49,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
-const dataFile = path.join(__dirname, 'data.json');
 
 // Get all points
 app.get('/api/points', (req, res) => {
@@ -52,6 +72,7 @@ app.post('/api/points', upload.single('media'), (req, res) => {
       lng: parseFloat(req.body.lng),
       timestamp: req.body.timestamp || new Date().toISOString(),
       description: req.body.description || '',
+      notes: req.body.notes || '',
       type: req.body.type || 'sighting',
       mediaUrl: req.file ? `/uploads/${req.file.filename}` : null,
       mediaType: req.file ? req.file.mimetype : null
@@ -88,6 +109,7 @@ app.put('/api/points/:id', upload.single('media'), (req, res) => {
       lng: req.body.lng ? parseFloat(req.body.lng) : points[pointIndex].lng,
       timestamp: req.body.timestamp || points[pointIndex].timestamp,
       description: req.body.description || points[pointIndex].description,
+      notes: req.body.notes || points[pointIndex].notes || '',
     };
 
     if (req.file) {

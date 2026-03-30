@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import MapComponent from './MapComponent';
-import { AlertTriangle, MapPin, Send, Image as ImageIcon, Edit, Trash2, XCircle } from 'lucide-react';
+import { AlertTriangle, MapPin, Send, Image as ImageIcon, Edit, Trash2, List, Plus, X } from 'lucide-react';
 import exifr from 'exifr';
 import './index.css';
 
@@ -11,6 +11,7 @@ export interface TrackingPoint {
   lng: number;
   timestamp: string;
   description: string;
+  notes?: string;
   type: string;
   mediaUrl: string | null;
   mediaType: string | null;
@@ -22,9 +23,13 @@ function App() {
   const [points, setPoints] = useState<TrackingPoint[]>([]);
   const [selectedLatLng, setSelectedLatLng] = useState<{lat: number, lng: number} | null>(null);
   
+  // UI States
+  const [sheetOpen, setSheetOpen] = useState<'form' | 'list' | null>(null);
+
   // Form states
   const [editingPointId, setEditingPointId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
+  const [notes, setNotes] = useState('');
   const [rawLocationInput, setRawLocationInput] = useState('');
   const [time, setTime] = useState(new Date().toISOString().substring(0, 16));
   const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -41,78 +46,13 @@ function App() {
 
   useEffect(() => {
     fetchPoints();
-    // Real-time polling
     const interval = setInterval(fetchPoints, 3000);
     return () => clearInterval(interval);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLatLng) {
-      alert('Vui lòng click vào bản đồ để chọn tọa độ');
-      return;
-    }
-
-    setIsSubmitting(true);
-    const formData = new FormData();
-    formData.append('lat', selectedLatLng.lat.toString());
-    formData.append('lng', selectedLatLng.lng.toString());
-    formData.append('timestamp', new Date(time).toISOString());
-    formData.append('description', description);
-    
-    if (mediaFile) {
-      formData.append('media', mediaFile);
-    }
-
-    try {
-      if (editingPointId) {
-        // Update
-        await axios.put(`${API_URL}/${editingPointId}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-      } else {
-        // Create
-        formData.append('type', points.length === 0 ? 'stolen_location' : 'sighting');
-        await axios.post(API_URL, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-      }
-      
-      resetForm();
-      await fetchPoints();
-    } catch (err) {
-      alert('Lỗi khi lưu dữ liệu');
-      console.error(err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleEdit = (point: TrackingPoint) => {
-    setEditingPointId(point.id);
-    setSelectedLatLng({ lat: point.lat, lng: point.lng });
-    setDescription(point.description);
-    // Format timestamp for datetime-local input (YYYY-MM-DDThh:mm)
-    const dt = new Date(point.timestamp);
-    dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
-    setTime(dt.toISOString().slice(0, 16));
-    setMediaFile(null);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa điểm này không?')) {
-      try {
-        await axios.delete(`${API_URL}/${id}`);
-        if (editingPointId === id) resetForm();
-        await fetchPoints();
-      } catch (err) {
-        alert('Lỗi xóa điểm');
-      }
-    }
-  };
-
   const resetForm = () => {
     setDescription('');
+    setNotes('');
     setMediaFile(null);
     setSelectedLatLng(null);
     setRawLocationInput('');
@@ -124,18 +64,47 @@ function App() {
     setRawLocationInput(text);
     if (!text.trim()) return;
 
-    // Tìm trong Link Google Maps dạng @lat,lng hoặc dán tay "lat, lng"
-    let match = text.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (!match) {
-      match = text.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+    // 1. Tự động múc toàn bộ văn bản vào mục Đặc điểm nhận dạng & Ghi chú để user khỏi phải gõ tay lại
+    if (!description && !editingPointId) {
+      setDescription(text.substring(0, 100)); // Lấy tạm 100 chữ cái làm Tiêu đề
     }
-    
-    if (match) {
-      const lat = parseFloat(match[1]);
-      const lng = parseFloat(match[2]);
+    if (!notes && !editingPointId) {
+      setNotes(text);
+    }
+
+    // 2. Tìm TOẠ ĐỘ trong đống chữ
+    let locMatch = text.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (!locMatch) {
+      locMatch = text.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+    }
+    if (locMatch) {
+      const lat = parseFloat(locMatch[1]);
+      const lng = parseFloat(locMatch[2]);
       if (!isNaN(lat) && !isNaN(lng)) {
         setSelectedLatLng({ lat, lng });
       }
+    }
+
+    // 3. Tìm THỜI GIAN THEO FORMAT TIẾNG VIỆT (VD: "08h03 ngày 28/3/2026")
+    const timeMatch = text.match(/(?:lúc|khoảng)?\s*(\d{1,2})[h:](\d{1,2})[p']?(?:\s+ngày\s+(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?)?/i);
+    if (timeMatch) {
+      const hh = parseInt(timeMatch[1]);
+      const mm = parseInt(timeMatch[2]);
+      let dd = new Date().getDate();
+      let mo = new Date().getMonth() + 1;
+      let yyyy = new Date().getFullYear();
+
+      // Nếu có ngày tháng năm đi kèm
+      if (timeMatch[3] && timeMatch[4]) {
+        dd = parseInt(timeMatch[3]);
+        mo = parseInt(timeMatch[4]);
+      }
+      if (timeMatch[5]) {
+        yyyy = parseInt(timeMatch[5]);
+      }
+
+      const formattedDate = `${yyyy}-${mo.toString().padStart(2, '0')}-${dd.toString().padStart(2, '0')}T${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+      setTime(formattedDate);
     }
   };
 
@@ -145,120 +114,222 @@ function App() {
     if (!file) return;
 
     try {
-      // Analyze EXIF data only if it is an image
       if (file.type.startsWith('image/')) {
         const metadata = await exifr.parse(file, { gps: true, tiff: true, exif: true });
         
         if (metadata) {
           let updated = false;
-          // Check for GPS Location
           if (metadata.latitude && metadata.longitude) {
             setSelectedLatLng({ lat: metadata.latitude, lng: metadata.longitude });
             updated = true;
           }
-          // Check for Creation Time (DateTimeOriginal or CreateDate)
           const exifDate = metadata.DateTimeOriginal || metadata.CreateDate || metadata.ModifyDate;
           if (exifDate instanceof Date) {
-            // Convert to local time format 'YYYY-MM-DDTHH:mm'
             const dt = new Date(exifDate);
             dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
             setTime(dt.toISOString().slice(0, 16));
             updated = true;
           }
-
           if (updated) {
-            alert('✅ Đã quét file thành công: Tự động trích xuất Tọa độ GPS và Thời gian chụp từ ảnh.');
+            alert('✅ Đã quét file thành công tọa độ & thời gian.');
           }
         }
       }
     } catch (err) {
-      console.log('No EXIF data found or error parsing:', err);
+      console.log('No EXIF data found', err);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLatLng) {
+      alert('Vui lòng click vào bản đồ hoặc nhập tọa độ');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const formData = new FormData();
+    formData.append('lat', selectedLatLng.lat.toString());
+    formData.append('lng', selectedLatLng.lng.toString());
+    formData.append('timestamp', new Date(time).toISOString());
+    formData.append('description', description);
+    formData.append('notes', notes);
+    
+    if (mediaFile) {
+      formData.append('media', mediaFile);
+    }
+
+    try {
+      if (editingPointId) {
+        await axios.put(`${API_URL}/${editingPointId}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      } else {
+        formData.append('type', points.length === 0 ? 'stolen_location' : 'sighting');
+        await axios.post(API_URL, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
+      resetForm();
+      setSheetOpen(null);
+      await fetchPoints();
+    } catch (err) {
+      alert('Lỗi truy xuất hệ thống');
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEdit = (point: TrackingPoint) => {
+    setEditingPointId(point.id);
+    setSelectedLatLng({ lat: point.lat, lng: point.lng });
+    setDescription(point.description);
+    setNotes(point.notes || '');
+    const dt = new Date(point.timestamp);
+    dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+    setTime(dt.toISOString().slice(0, 16));
+    setMediaFile(null);
+    setSheetOpen('form');
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Xóa dấu vết này khỏi hệ thống?')) {
+      try {
+        await axios.delete(`${API_URL}/${id}`);
+        if (editingPointId === id) resetForm();
+        await fetchPoints();
+      } catch (err) {
+        alert('Lỗi xóa điểm');
+      }
     }
   };
 
   return (
     <div id="root">
-      <div className="sidebar">
-        <div className="sidebar-header">
-          <h1><AlertTriangle size={24} /> Báo Động Đỏ</h1>
+      
+      {/* MAP LAYER */}
+      <div className="map-container">
+        <MapComponent 
+          points={points} 
+          selectedLatLng={selectedLatLng} 
+          onMapClick={(lat, lng) => {
+            setSelectedLatLng({lat, lng});
+            if (!sheetOpen) setSheetOpen('form');
+          }} 
+        />
+      </div>
+
+      {/* FLOATING TOP BAR */}
+      <div className="top-bar glass-panel">
+        <div className="brand-title">
+          <AlertTriangle size={20} />
+          Trạm QL6
         </div>
-        <div className="alert-ribbon">
-          Trạm Theo Dõi: QL6 Tân Lạc - Hòa Bình
+        <div style={{fontSize: '0.8rem', opacity: 0.8}}>
+          {points.length} dấu vết
         </div>
-        
-        <div className="form-container" style={{backgroundColor: editingPointId ? '#2b2311' : 'transparent'}}>
-          <h3 style={{ fontSize: '1rem', borderBottom: '1px solid #444', paddingBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-            {editingPointId ? 'Cập nhật điểm' : 'Thêm điểm báo cáo'}
-            {editingPointId && <button onClick={resetForm} className="btn-small" title="Hủy Cập Nhật"><XCircle size={14}/></button>}
-          </h3>
-          <p style={{ fontSize: '0.8rem', color: '#ff4757', fontWeight: 'bold' }}>
-            {selectedLatLng ? `Tọa độ: ${selectedLatLng.lat.toFixed(5)}, ${selectedLatLng.lng.toFixed(5)}` : '=> Click lên bản đồ để chọn tọa độ'}
-          </p>
+      </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="form-group">
-              <label>Tọa độ cắt dán / Link Google Maps</label>
-              <input 
-                type="text" 
-                className="form-control"
-                placeholder="Dán tọa độ (vd: 20.81, 105.33) hoặc link Map..."
-                value={rawLocationInput}
-                onChange={e => parseLocationInput(e.target.value)}
-              />
-            </div>
+      {/* FLOATING ACTION BUTTONS */}
+      <div className="fab-container">
+        <button className="fab fab-secondary" onClick={() => setSheetOpen('list')} title="Nhật ký">
+          <List size={24} />
+        </button>
+        <button className="fab" onClick={() => { resetForm(); setSheetOpen('form'); }} title="Báo cáo mới">
+          <Plus size={28} />
+        </button>
+      </div>
 
-            <div className="form-group">
-              <label>Thời điểm phát hiện</label>
-              <input 
-                type="datetime-local" 
-                className="form-control"
-                value={time}
-                onChange={e => setTime(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Đặc điểm nhận dạng / Mô tả</label>
-              <input 
-                type="text" 
-                className="form-control"
-                placeholder="VD: Nam, áo đen..."
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                required
-              />
-            </div>
+      {/* OVERLAY BACKDROP */}
+      <div className={`overlay ${sheetOpen ? 'visible' : ''}`} onClick={() => setSheetOpen(null)} />
 
-            <div className="form-group">
-              <label><ImageIcon size={14} style={{verticalAlign: 'middle'}}/> Ảnh gốc (Giúp trích xuất Tọa độ tự động)</label>
-              <input 
-                type="file" 
-                className="form-control"
-                accept="image/*,video/*"
-                onChange={handleFileChange}
-              />
-            </div>
-
-            <button type="submit" className="btn-submit" disabled={isSubmitting || !selectedLatLng} style={editingPointId ? {backgroundColor: '#e67e22'} : {}}>
-              <Send size={16} style={{verticalAlign: 'middle', marginRight: '4px'}} />
-              {isSubmitting ? 'Đang gửi...' : (editingPointId ? 'Lưu Cập Nhật' : 'Phát Tín Hiệu Báo Cáo')}
-            </button>
-          </form>
+      {/* BOTTOM SHEET FOR FORM */}
+      <div className={`bottom-sheet glass-panel ${sheetOpen === 'form' ? 'open' : ''}`}>
+        <div className="sheet-header">
+          <h2>{editingPointId ? 'Sửa dấu vết' : 'Ghi nhận vị trí'}</h2>
+          <button className="btn-close" onClick={() => setSheetOpen(null)}><X size={20}/></button>
         </div>
+        <p style={{ fontSize: '0.85rem', color: '#ff4757', fontWeight: 'bold', marginBottom: '16px' }}>
+          {selectedLatLng ? `📍 Tốc độ bắt: ${selectedLatLng.lat.toFixed(5)}, ${selectedLatLng.lng.toFixed(5)}` : '⚠️ Chưa có tọa độ! Hãy chấm trên bản đồ.'}
+        </p>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Ném toàn bộ tin nhắn Zalo vào đây (Web tự đọc Tọa độ!)</label>
+            <textarea 
+              className="form-control"
+              placeholder="VD: Đối tượng đã đi qua ngã tư... 20.81, 105.33"
+              rows={2}
+              value={rawLocationInput}
+              onChange={e => parseLocationInput(e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label>Thời điểm phát hiện</label>
+            <input 
+              type="datetime-local" 
+              className="form-control"
+              value={time}
+              onChange={e => setTime(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Đặc điểm nhận dạng (Mô tả ngắn gọn)</label>
+            <input 
+              type="text" 
+              className="form-control"
+              placeholder="VD: Nam, áo đen, xe Exciter..."
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Ghi chú mở rộng (Không giới hạn định dạng)</label>
+            <textarea 
+              className="form-control"
+              placeholder="Có thể ghi thêm thông tin tự do..."
+              rows={3}
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label><ImageIcon size={14} style={{verticalAlign: 'middle', marginRight: '4px'}}/>Ảnh gốc (Tự rút Tọa độ gốc)</label>
+            <input 
+              type="file" 
+              className="form-control"
+              accept="image/*,video/*"
+              onChange={handleFileChange}
+            />
+          </div>
+          <button type="submit" className="btn-submit" disabled={isSubmitting || !selectedLatLng}>
+            <Send size={18} />
+            {isSubmitting ? 'Đang gửi...' : (editingPointId ? 'Lưu Thay Đổi' : 'Phát Tín Hiệu')}
+          </button>
+        </form>
+      </div>
 
+      {/* BOTTOM SHEET FOR LIST */}
+      <div className={`bottom-sheet glass-panel ${sheetOpen === 'list' ? 'open' : ''}`} style={{height: '70vh'}}>
+        <div className="sheet-header">
+          <h2>Nhật ký tẩu thoát</h2>
+          <button className="btn-close" onClick={() => setSheetOpen(null)}><X size={20}/></button>
+        </div>
         <div className="point-list">
-          <h3 style={{ fontSize: '1rem', borderBottom: '1px solid #444', paddingBottom: '8px' }}>
-            Nhật ký di chuyển
-          </h3>
-          {points.length === 0 && <p style={{color: '#888', fontSize: '0.85rem'}}>Chưa có dấu vết nào được ghi nhận.</p>}
+          {points.length === 0 && <p style={{color: '#888'}}>Chưa có dữ liệu.</p>}
           {points.map((p, idx) => (
-            <div key={p.id} className="point-item" style={editingPointId === p.id ? {borderColor: '#e67e22'} : {}}>
+            <div key={p.id} className="point-item">
               <div className="point-item-header">
-                <strong><MapPin size={14} color={idx === 0 ? "#ff4757" : "#3498db"} /> Điểm thứ #{idx + 1}</strong>
+                <strong>
+                  <MapPin size={14} color={idx === 0 ? "#ff4757" : "#3498db"} style={{marginRight: '4px', verticalAlign: 'middle'}}/>
+                </strong>
                 <span className="point-time">{new Date(p.timestamp).toLocaleTimeString('vi-VN')}</span>
               </div>
-              <p className="point-desc">{p.description}</p>
+              <p style={{fontSize: '0.95rem', fontWeight: 'bold', color: '#fff'}}>{p.description}</p>
+              {p.notes && <p style={{fontSize: '0.85rem', color: '#bbb', marginTop: '4px', whiteSpace: 'pre-wrap'}}>{p.notes}</p>}
+              
               {p.mediaUrl && (
                 <div style={{marginTop: '8px'}}>
                   {p.mediaType?.includes('video') ? (
@@ -268,27 +339,15 @@ function App() {
                   )}
                 </div>
               )}
-              
               <div className="point-actions">
-                <button className="btn-small" onClick={() => handleEdit(p)}>
-                  <Edit size={12}/> Sửa
-                </button>
-                <button className="btn-small btn-delete" onClick={() => handleDelete(p.id)}>
-                  <Trash2 size={12}/> Xóa
-                </button>
+                <button className="btn-small" onClick={() => handleEdit(p)}><Edit size={12}/> Sửa</button>
+                <button className="btn-small btn-delete" onClick={() => handleDelete(p.id)}><Trash2 size={12}/> Xóa</button>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="map-container">
-        <MapComponent 
-          points={points} 
-          selectedLatLng={selectedLatLng} 
-          onMapClick={(lat, lng) => setSelectedLatLng({lat, lng})} 
-        />
-      </div>
     </div>
   );
 }
