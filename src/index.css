@@ -299,3 +299,37 @@ input[type="file"].form-control {
   border-right-color: rgba(30, 30, 30, 0.9) !important;
   border-left-color: rgba(30, 30, 30, 0.9) !important;
 }
+
+.tooltip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tooltip-time {
+  color: #ff4757;
+  font-weight: 700;
+}
+
+.tooltip-desc {
+  font-weight: 600;
+}
+
+.tooltip-coord {
+  font-size: 0.75rem;
+  color: #aaa;
+  margin-top: 2px;
+}
+
+/* Mobile responsive refinements */
+@media (max-width: 600px) {
+  .custom-tooltip {
+    font-size: 0.75rem !important;
+    padding: 4px 8px !important;
+    max-width: 150px;
+    white-space: normal !important; /* Allow wrapping */
+  }
+  .brand-title {
+    font-size: 1rem;
+  }
+}

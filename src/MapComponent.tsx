@@ -79,12 +79,12 @@ export default function MapComponent({ points, selectedLatLng, onMapClick }: Map
         >
           {/* Always display this floating label next to the dot without needing a click */}
           <Tooltip direction="right" offset={[10, 0]} opacity={0.9} permanent className="custom-tooltip">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <span style={{ color: '#ff4757', fontWeight: 700 }}>
+            <div className="tooltip-content">
+              <span className="tooltip-time">
                 {new Date(p.timestamp).toLocaleString('vi-VN', {day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit'})}
               </span>
-              <span style={{ fontWeight: 600 }}>{p.description}</span>
-              <span style={{ fontSize: '0.75rem', color: '#aaa', marginTop: '2px' }}>
+              <span className="tooltip-desc">{p.description}</span>
+              <span className="tooltip-coord">
                 📍 {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
               </span>
             </div>

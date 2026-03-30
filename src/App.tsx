@@ -64,12 +64,13 @@ function App() {
     setRawLocationInput(text);
     if (!text.trim()) return;
 
-    // 1. Tự động múc toàn bộ văn bản vào mục Đặc điểm nhận dạng & Ghi chú để user khỏi phải gõ tay lại
-    if (!description && !editingPointId) {
-      setDescription(text.substring(0, 100)); // Lấy tạm 100 chữ cái làm Tiêu đề
-    }
-    if (!notes && !editingPointId) {
-      setNotes(text);
+    // 1. Tự động múc văn bản vào mục Đặc điểm & Ghi chú
+    if (!editingPointId) {
+      // Chỉ lấy dòng đầu tiên hoặc 50 ký tự đầu làm tiêu đề cho gọn
+      const lines = text.split('\n');
+      const firstLine = lines[0].trim();
+      setDescription(firstLine.length > 50 ? firstLine.substring(0, 50) + "..." : firstLine);
+      setNotes(text); // Toàn bộ text vẫn lưu trong Ghi chú
     }
 
     // 2. Tìm TOẠ ĐỘ trong đống chữ
