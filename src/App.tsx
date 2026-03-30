@@ -18,10 +18,14 @@ export interface TrackingPoint {
 }
 
 const API_URL = '/api/points';
+const API_BASE_URL = '';
 
 function App() {
   const [points, setPoints] = useState<TrackingPoint[]>([]);
   const [selectedLatLng, setSelectedLatLng] = useState<{lat: number, lng: number} | null>(null);
+  const [isPinningMode, setIsPinningMode] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   
   // UI States
   const [sheetOpen, setSheetOpen] = useState<'form' | 'list' | null>(null);
@@ -60,20 +64,41 @@ function App() {
     setEditingPointId(null);
   };
 
+  const handleAISummarize = async () => {
+    if (!rawLocationInput.trim()) return;
+    setIsSummarizing(true);
+    try {
+      const lastPoint = points[points.length - 1];
+      const referenceTime = lastPoint ? lastPoint.timestamp : new Date().toISOString();
+
+      const response = await axios.post(`${API_BASE_URL}/api/summarize`, {
+        text: rawLocationInput,
+        referenceTime
+      });
+
+      const { time: aiTime, description: aiDesc, notes: aiNotes } = response.data;
+      if (aiTime) setTime(aiTime.split('.')[0]);
+      if (aiDesc) setDescription(aiDesc);
+      if (aiNotes) setNotes(aiNotes);
+    } catch (err) {
+      console.error('Lỗi AI:', err);
+      alert('Không thể kết nối AI để tổng hợp. Vui lòng kiểm tra lại tin nhắn.');
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
   const parseLocationInput = (text: string) => {
     setRawLocationInput(text);
     if (!text.trim()) return;
 
-    // 1. Tự động múc văn bản vào mục Đặc điểm & Ghi chú
     if (!editingPointId) {
-      // Chỉ lấy dòng đầu tiên hoặc 50 ký tự đầu làm tiêu đề cho gọn
       const lines = text.split('\n');
       const firstLine = lines[0].trim();
       setDescription(firstLine.length > 50 ? firstLine.substring(0, 50) + "..." : firstLine);
-      setNotes(text); // Toàn bộ text vẫn lưu trong Ghi chú
+      setNotes(text);
     }
 
-    // 2. Tìm TOẠ ĐỘ trong đống chữ
     let locMatch = text.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
     if (!locMatch) {
       locMatch = text.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
@@ -86,7 +111,6 @@ function App() {
       }
     }
 
-    // 3. Tìm THỜI GIAN THEO FORMAT TIẾNG VIỆT (VD: "08h03 ngày 28/3/2026")
     const timeMatch = text.match(/(?:lúc|khoảng)?\s*(\d{1,2})[h:](\d{1,2})[p']?(?:\s+ngày\s+(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{4}))?)?/i);
     if (timeMatch) {
       const hh = parseInt(timeMatch[1]);
@@ -95,7 +119,6 @@ function App() {
       let mo = new Date().getMonth() + 1;
       let yyyy = new Date().getFullYear();
 
-      // Nếu có ngày tháng năm đi kèm
       if (timeMatch[3] && timeMatch[4]) {
         dd = parseInt(timeMatch[3]);
         mo = parseInt(timeMatch[4]);
@@ -173,6 +196,7 @@ function App() {
       }
       resetForm();
       setSheetOpen(null);
+      setIsFormOpen(false);
       await fetchPoints();
     } catch (err) {
       alert('Lỗi truy xuất hệ thống');
@@ -192,6 +216,7 @@ function App() {
     setTime(dt.toISOString().slice(0, 16));
     setMediaFile(null);
     setSheetOpen('form');
+    setIsFormOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -215,8 +240,11 @@ function App() {
           points={points} 
           selectedLatLng={selectedLatLng} 
           onMapClick={(lat, lng) => {
-            setSelectedLatLng({lat, lng});
-            if (!sheetOpen) setSheetOpen('form');
+            if (isPinningMode) {
+              setSelectedLatLng({lat, lng});
+              setIsFormOpen(true);
+              setSheetOpen('form');
+            }
           }} 
         />
       </div>
@@ -232,12 +260,32 @@ function App() {
         </div>
       </div>
 
-      {/* FLOATING ACTION BUTTONS */}
-      <div className="fab-container-left">
-        <button className="fab fab-extended" onClick={() => { resetForm(); setSheetOpen('form'); }} title="Báo cáo mới">
-          <Plus size={22} /> Thêm dấu vết
+      {/* FABs */}
+      <div className="fab-container left">
+        <button 
+          className={`fab-extended ${isPinningMode ? 'active' : ''}`}
+          onClick={() => setIsPinningMode(!isPinningMode)}
+          style={{ background: isPinningMode ? '#ff4757' : '#2f3542' }}
+        >
+          {isPinningMode ? <X size={20} /> : <Plus size={20} />}
+          <span>{isPinningMode ? "Hủy ghim" : "Ghim trên bản đồ"}</span>
         </button>
       </div>
+
+      {!isFormOpen && (
+        <div className="fab-container left-sub">
+           <button 
+            className="fab" 
+            onClick={() => {
+              setIsFormOpen(true);
+              setEditingPointId(null);
+              resetForm();
+            }}
+          >
+            <Plus size={24} />
+          </button>
+        </div>
+      )}
 
       <div className="fab-container-right">
         <button className="fab fab-secondary" onClick={() => setSheetOpen('list')} title="Nhật ký">
@@ -246,27 +294,38 @@ function App() {
       </div>
 
       {/* OVERLAY BACKDROP */}
-      <div className={`overlay ${sheetOpen ? 'visible' : ''}`} onClick={() => setSheetOpen(null)} />
+      <div className={`overlay ${sheetOpen ? 'visible' : ''}`} onClick={() => {setSheetOpen(null); setIsFormOpen(false);}} />
 
       {/* BOTTOM SHEET FOR FORM */}
       <div className={`bottom-sheet glass-panel ${sheetOpen === 'form' ? 'open' : ''}`}>
         <div className="sheet-header">
           <h2>{editingPointId ? 'Sửa dấu vết' : 'Ghi nhận vị trí'}</h2>
-          <button className="btn-close" onClick={() => setSheetOpen(null)}><X size={20}/></button>
+          <button className="btn-close" onClick={() => {setSheetOpen(null); setIsFormOpen(false);}}><X size={20}/></button>
         </div>
         <p style={{ fontSize: '0.85rem', color: '#ff4757', fontWeight: 'bold', marginBottom: '16px' }}>
           {selectedLatLng ? `📍 Tốc độ bắt: ${selectedLatLng.lat.toFixed(5)}, ${selectedLatLng.lng.toFixed(5)}` : '⚠️ Chưa có tọa độ! Hãy chấm trên bản đồ.'}
         </p>
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Ném toàn bộ tin nhắn Zalo vào đây (Web tự đọc Tọa độ!)</label>
-            <textarea 
-              className="form-control"
-              placeholder="VD: Đối tượng đã đi qua ngã tư... 20.81, 105.33"
-              rows={2}
-              value={rawLocationInput}
-              onChange={e => parseLocationInput(e.target.value)}
-            />
+          <div className="input-group">
+            <label>Nội dung cần xử lý (Dán từ Zalo)</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <textarea 
+                className="form-control"
+                value={rawLocationInput}
+                onChange={(e) => parseLocationInput(e.target.value)}
+                placeholder="Dán link Google Maps hoặc tin nhắn Zalo vào đây..."
+                rows={3}
+              />
+              <button 
+                type="button" 
+                className="ai-btn"
+                onClick={handleAISummarize}
+                disabled={isSummarizing || !rawLocationInput}
+                title="AI Tổng hợp lộ trình"
+              >
+                {isSummarizing ? "..." : "🤖 Tổng hợp"}
+              </button>
+            </div>
           </div>
           <div className="form-group">
             <label>Thời điểm phát hiện</label>

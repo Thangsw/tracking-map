@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -24,16 +24,62 @@ export function ClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: nu
   return null;
 }
 
-// Map automatically bounds to see all tracking points
+// Map automatically bounds to see all tracking points BUT only when requested or first load
 export function MapAutoBounder({ points }: { points: TrackingPoint[] }) {
   const map = useMap();
+  const pointsCountRef = useRef(points.length);
+
   useEffect(() => {
-    if (points.length > 0) {
+    // Chỉ tự động fit bounds khi số lượng điểm thay đổi (vừa thêm điểm mới)
+    // HOẶC nếu đây là lần đầu tiên có dữ liệu
+    if (points.length > 0 && points.length !== pointsCountRef.current) {
       const bounds = L.latLngBounds(points.map(p => [p.lat, p.lng]));
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      pointsCountRef.current = points.length;
     }
   }, [points, map]);
+
   return null;
+}
+
+// Component to fetch and display actual road path using OSRM
+function RoadRouting({ points }: { points: TrackingPoint[] }) {
+  const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
+
+  useEffect(() => {
+    if (points.length < 2) {
+      setRouteCoords([]);
+      return;
+    }
+
+    const fetchRoute = async () => {
+      try {
+        // OSRM coordinates format: lng,lat;lng,lat
+        const coordsStr = points.map(p => `${p.lng},${p.lat}`).join(';');
+        const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
+        
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (data.code === 'Ok' && data.routes && data.routes[0]) {
+          const geometry = data.routes[0].geometry;
+          // Leaflet expects [lat, lng], GeoJSON provides [lng, lat]
+          const mapped = geometry.coordinates.map((c: any) => [c[1], c[0]] as [number, number]);
+          setRouteCoords(mapped);
+        }
+      } catch (err) {
+        console.error('Routing error:', err);
+        // Fallback to straight lines if OSRM fails
+        setRouteCoords(points.map(p => [p.lat, p.lng]));
+      }
+    };
+
+    fetchRoute();
+  }, [points]);
+
+  return routeCoords.length > 0 ? (
+    <Polyline positions={routeCoords} color="#ff4757" weight={5} opacity={0.7} dashArray="10, 10" lineJoin="round" />
+  ) : null;
 }
 
 interface MapComponentProps {
@@ -44,7 +90,6 @@ interface MapComponentProps {
 
 export default function MapComponent({ points, selectedLatLng, onMapClick }: MapComponentProps) {
   const initCenter: [number, number] = [20.7335, 105.2933];
-  const polylinePositions = points.map(p => [p.lat, p.lng] as [number, number]);
 
   return (
     <MapContainer 
@@ -59,12 +104,10 @@ export default function MapComponent({ points, selectedLatLng, onMapClick }: Map
       />
       
       <ClickHandler onMapClick={onMapClick} />
-      {points.length > 0 && <MapAutoBounder points={points} />}
+      <MapAutoBounder points={points} />
+      <RoadRouting points={points} />
 
-      {/* Polyline connecting the chronological spots */}
-      <Polyline positions={polylinePositions} color="#ff4757" weight={4} dashArray="5, 10" />
-
-      {/* Simple DOS Dots for Tracking Points instead of huge Marker pins */}
+      {/* Simple DOS Dots for Tracking Points */}
       {points.map((p, index) => (
         <CircleMarker
           key={p.id}
@@ -77,7 +120,6 @@ export default function MapComponent({ points, selectedLatLng, onMapClick }: Map
             weight: 2
           }}
         >
-          {/* Always display this floating label next to the dot without needing a click */}
           <Popup className="custom-popup">
             <div className="tooltip-content">
               <span className="tooltip-time">

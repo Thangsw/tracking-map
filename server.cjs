@@ -3,6 +3,72 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const https = require('https');
+
+// ═══════════════════════════════════════════════════════════
+// AI CONFIG (Gemini/Gemma Logic) - BẢO MẬT: Dùng biến môi trường
+// ═══════════════════════════════════════════════════════════
+const MODELS = [
+  "gemini-1.5-flash",
+  "gemini-2.0-flash",
+];
+
+// Đọc danh sách keys từ biến môi trường (cấu hình trên Railway)
+const ALL_KEYS = process.env.GEMINI_KEYS ? process.env.GEMINI_KEYS.split(',') : [];
+
+let keyIdx = 0;
+const failedKeys = new Set();
+
+function getNextKey() {
+  if (ALL_KEYS.length === 0) return null;
+  const available = ALL_KEYS.filter(k => !failedKeys.has(k));
+  if (!available.length) {
+    failedKeys.clear();
+    return ALL_KEYS[0];
+  }
+  return available[keyIdx++ % available.length];
+}
+
+function callGemini(prompt) {
+  return new Promise((resolve, reject) => {
+    const model = MODELS[0];
+    const key = getNextKey();
+    if (!key) return reject(new Error("Chưa cấu hình GEMINI_KEYS trong biến môi trường!"));
+    
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+
+    const payload = JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
+    });
+
+    const options = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    };
+
+    const req = https.request(url, options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          try {
+            const parsed = JSON.parse(data);
+            const text = parsed.candidates[0].content.parts[0].text;
+            resolve(text);
+          } catch (e) { reject(e); }
+        } else {
+          if (res.statusCode === 429) failedKeys.add(key);
+          reject(new Error(`AI Error: ${res.statusCode}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -170,13 +236,50 @@ app.delete('/api/points/:id', (req, res) => {
     let points = readData();
     const newPoints = points.filter(p => p.id !== req.params.id);
 
-    writeData(newPoints);
+    fs.writeFileSync(dataFile, JSON.stringify(newPoints, null, 2));
     res.json({ message: 'Xóa thành công' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Lỗi xóa dữ liệu' });
   }
 });
+
+// AI Summarize Endpoint
+app.post('/api/summarize', async (req, res) => {
+  const { text, referenceTime } = req.body;
+  if (!text) return res.status(400).json({ error: 'Thiếu text' });
+
+  const prompt = `Bạn là trợ lý điều tra chuyên nghiệp. Hãy phân tích đoạn tin nhắn sau và trích xuất thông tin LỘ TRÌNH XE TRỘM CẮP.
+Tin nhắn: "${text}"
+Giờ gốc tham chiếu: ${referenceTime || new Date().toISOString()}
+
+YÊU CẦU:
+1. Tính toán thời gian chính xác (ví dụ: "15 phút sau" thì cộng vào giờ gốc).
+2. Trích xuất đặc điểm/biển số xe.
+3. Trả về kết quả CHỈ DUY NHẤT dưới dạng JSON như sau:
+{
+  "time": "YYYY-MM-DDTHH:mm:ss",
+  "description": "Mô tả ngắn gọn đặc điểm xe và hành động",
+  "notes": "Ghi chú chi tiết nếu có"
+}
+
+Nếu không tính được giờ, hãy giữ nguyên ngày của giờ gốc và chỉ thay đổi giờ:phút.`;
+
+  try {
+    const aiResponse = await callGemini(prompt);
+    // Bóc tách JSON từ phản hồi của AI (phòng trường hợp AI bọc trong Markdown)
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      res.json(JSON.parse(jsonMatch[0]));
+    } else {
+      res.status(500).json({ error: 'AI không trả về đúng định dạng JSON' });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Lỗi khi gọi AI' });
+  }
+});
+
 
 // Serve React production build
 const distPath = path.join(__dirname, 'dist');

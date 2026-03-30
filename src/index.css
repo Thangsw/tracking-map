@@ -84,13 +84,63 @@ body {
 }
 
 /* Floating Action Buttons */
-.fab-container-left {
-  position: absolute;
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-  left: 16px;
-  z-index: 1000;
-  pointer-events: auto;
+.fab-container.left {
+  left: 20px;
+  bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
+
+.fab-container.left-sub {
+  left: 20px;
+  bottom: 100px; /* Nằm trên nút Ghim */
+}
+
+/* AI Button styling */
+.ai-btn {
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.ai-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.ai-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fab-extended.active {
+  box-shadow: 0 0 15px rgba(255, 71, 87, 0.5);
+  border: 2px solid white;
+}
+
+@media (max-width: 600px) {
+  .fab-container.left {
+    bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+  .fab-container.left-sub {
+    bottom: calc(90px + env(safe-area-inset-bottom));
+  }
+  .ai-btn {
+    padding: 0 10px;
+    font-size: 0.8rem;
+  }
+}
+
 .fab-container-right {
   position: absolute;
   bottom: calc(24px + env(safe-area-inset-bottom, 0px));
