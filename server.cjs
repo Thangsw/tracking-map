@@ -74,8 +74,8 @@ const upload = multer({ storage: storage });
 // Get all points
 app.get('/api/points', (req, res) => {
   try {
-    const data = fs.readFileSync(dataFile, 'utf8');
-    res.json(JSON.parse(data));
+    const points = readData();
+    res.json(points);
   } catch (err) {
     res.status(500).json({ error: 'Lỗi đọc file dữ liệu' });
   }
@@ -132,8 +132,7 @@ app.post('/api/points', upload.single('media'), (req, res) => {
 // Update an existing point
 app.put('/api/points/:id', upload.single('media'), (req, res) => {
   try {
-    const data = fs.readFileSync(dataFile, 'utf8');
-    let points = JSON.parse(data);
+    let points = readData();
     const pointIndex = points.findIndex(p => p.id === req.params.id);
 
     if (pointIndex === -1) {
@@ -155,9 +154,8 @@ app.put('/api/points/:id', upload.single('media'), (req, res) => {
     }
 
     points[pointIndex] = updatedPoint;
-    points.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    writeData(points);
 
-    fs.writeFileSync(dataFile, JSON.stringify(points, null, 2));
     res.json({ message: 'Cập nhật thành công', data: updatedPoint });
 
   } catch (err) {
@@ -169,11 +167,10 @@ app.put('/api/points/:id', upload.single('media'), (req, res) => {
 // Delete a point
 app.delete('/api/points/:id', (req, res) => {
   try {
-    const data = fs.readFileSync(dataFile, 'utf8');
-    let points = JSON.parse(data);
+    let points = readData();
     const newPoints = points.filter(p => p.id !== req.params.id);
 
-    fs.writeFileSync(dataFile, JSON.stringify(newPoints, null, 2));
+    writeData(newPoints);
     res.json({ message: 'Xóa thành công' });
   } catch (err) {
     console.error(err);
