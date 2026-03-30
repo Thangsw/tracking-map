@@ -42,10 +42,14 @@ function App() {
   const fetchPoints = async () => {
     try {
       const res = await axios.get(API_URL);
-      // Sắp xếp các điểm theo thời gian tăng dần
-      const sortedPoints = (res.data as TrackingPoint[]).sort((a, b) => 
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-      );
+      // Sắp xếp các điểm theo thời gian tăng dần (Cũ nhất là #1)
+      const sortedPoints = (res.data as TrackingPoint[]).sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        // Nếu không có thời gian hợp lệ, giữ nguyên vị trí
+        if (isNaN(timeA) || isNaN(timeB)) return 0;
+        return timeA - timeB;
+      });
       setPoints(sortedPoints);
     } catch (err) {
       console.error('Error fetching points', err);
@@ -134,6 +138,27 @@ function App() {
       const formattedDate = `${yyyy}-${mo.toString().padStart(2, '0')}-${dd.toString().padStart(2, '0')}T${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
       setTime(formattedDate);
     }
+  };
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Trình duyệt của bạn không hỗ trợ định vị GPS.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setSelectedLatLng({ lat: latitude, lng: longitude });
+        setTime(new Date().toISOString().substring(0, 16));
+        alert("✅ Đã lấy tọa độ hiện tại thành công!");
+      },
+      (error) => {
+        console.error("GPS Error:", error);
+        alert("⚠️ Không thể lấy vị trí. Vui lòng bật GPS trên thiết bị.");
+      },
+      { enableHighAccuracy: true }
+    );
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -312,8 +337,17 @@ function App() {
           <button className="btn-close" onClick={() => {setSheetOpen(null); setIsFormOpen(false);}}><X size={20}/></button>
         </div>
         <p style={{ fontSize: '0.85rem', color: '#ff4757', fontWeight: 'bold', marginBottom: '16px' }}>
-          {selectedLatLng ? `📍 Tốc độ bắt: ${selectedLatLng.lat.toFixed(5)}, ${selectedLatLng.lng.toFixed(5)}` : '⚠️ Chưa có tọa độ! Hãy chấm trên bản đồ.'}
+          {selectedLatLng ? `📍 Tốc độ bắt: ${selectedLatLng.lat.toFixed(5)}, ${selectedLatLng.lng.toFixed(5)}` : '⚠️ Chưa có tọa độ! Hãy chấm trên bản đồ hoặc bấm nút GPS.'}
         </p>
+        <div style={{ marginBottom: '15px' }}>
+          <button 
+            type="button" 
+            className="gps-btn" 
+            onClick={handleGetCurrentLocation}
+          >
+            📍 Lấy vị trí GPS hiện tại
+          </button>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="input-group">
             <label>Nội dung cần xử lý (Dán từ Zalo)</label>

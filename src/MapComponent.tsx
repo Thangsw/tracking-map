@@ -113,10 +113,12 @@ export default function MapComponent({ points, selectedLatLng, onMapClick }: Map
       {/* Enhanced Technical Markers for Tracking Points */}
       {points.map((p, index) => {
         const isFirst = index === 0;
+        const isLast = index === points.length - 1 && points.length > 1;
+        
         const markerIcon = L.divIcon({
           className: 'custom-div-icon',
           html: `
-            <div class="marker-pin-wrapper ${isFirst ? 'first-point' : ''}">
+            <div class="marker-pin-wrapper ${isFirst ? 'first-point' : ''} ${isLast ? 'last-point' : ''}">
               <div class="marker-dot"></div>
               <div class="marker-number">#${index + 1}</div>
             </div>

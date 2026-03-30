@@ -29,6 +29,28 @@ body {
   z-index: 1;
 }
 
+/* GPS Button */
+.gps-btn {
+  width: 100%;
+  padding: 12px;
+  background: rgba(52, 152, 219, 0.05);
+  border: 2px dashed #3498db;
+  color: #3498db;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.gps-btn:hover {
+  background: rgba(52, 152, 219, 0.15);
+  transform: translateY(-1px);
+}
+
 .leaflet-container {
   background-color: #1a1a1a;
 }
@@ -429,8 +451,21 @@ input[type="file"].form-control {
   z-index: 3;
 }
 
-/* First point (Start) special style */
+/* First point (START) - Green */
 .first-point .marker-dot {
+  background-color: #2ecc71;
+  width: 18px;
+  height: 18px;
+  border-color: #fff;
+  box-shadow: 0 0 15px rgba(46, 204, 113, 0.8);
+}
+
+.first-point .marker-number {
+  background: #2ecc71;
+}
+
+/* Last point (CURRENT TARGET) - Red Pulsing */
+.last-point .marker-dot {
   background-color: #ff4757;
   width: 20px;
   height: 20px;
@@ -439,9 +474,9 @@ input[type="file"].form-control {
   box-shadow: 0 0 15px rgba(255, 71, 87, 0.8);
 }
 
-.first-point .marker-number {
+.last-point .marker-number {
   background: #ff4757;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 @keyframes marker-pulse {
