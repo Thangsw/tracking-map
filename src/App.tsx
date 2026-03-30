@@ -277,14 +277,14 @@ function App() {
       {!isFormOpen && (
         <div className="fab-container left-sub">
           <button 
-            className="fab fab-extended" 
+            className="fab-extended" 
             onClick={() => {
               setIsFormOpen(true);
               setEditingPointId(null);
               resetForm();
               setSheetOpen('form');
             }}
-            style={{ background: '#3498db', boxShadow: '0 4px 15px rgba(52, 152, 219, 0.4)' }}
+            style={{ background: '#3498db', boxShadow: '0 4px 15px rgba(52, 152, 219, 0.4)', color: 'white', border: 'none' }}
           >
             <Plus size={22} />
             <span>Thêm dấu vết</span>
