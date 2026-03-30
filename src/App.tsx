@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import MapComponent from './MapComponent';
-import { AlertTriangle, MapPin, Send, Image as ImageIcon, Edit, Trash2, List, Plus, X } from 'lucide-react';
+import { AlertTriangle, Send, Image as ImageIcon, Edit, Trash2, List, Plus, X } from 'lucide-react';
 import exifr from 'exifr';
 import './index.css';
 
