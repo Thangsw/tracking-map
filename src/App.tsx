@@ -18,13 +18,11 @@ export interface TrackingPoint {
 }
 
 const API_URL = '/api/points';
-const API_BASE_URL = '';
 
 function App() {
   const [points, setPoints] = useState<TrackingPoint[]>([]);
   const [selectedLatLng, setSelectedLatLng] = useState<{lat: number, lng: number} | null>(null);
   const [isPinningMode, setIsPinningMode] = useState(false);
-  const [isSummarizing, setIsSummarizing] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   
   // UI States
@@ -70,30 +68,6 @@ function App() {
     setRawLocationInput('');
     setTime(new Date().toISOString().substring(0, 16));
     setEditingPointId(null);
-  };
-
-  const handleAISummarize = async () => {
-    if (!rawLocationInput.trim()) return;
-    setIsSummarizing(true);
-    try {
-      const lastPoint = points[points.length - 1];
-      const referenceTime = lastPoint ? lastPoint.timestamp : new Date().toISOString();
-
-      const response = await axios.post(`${API_BASE_URL}/api/summarize`, {
-        text: rawLocationInput,
-        referenceTime
-      });
-
-      const { time: aiTime, description: aiDesc, notes: aiNotes } = response.data;
-      if (aiTime) setTime(aiTime.split('.')[0]);
-      if (aiDesc) setDescription(aiDesc);
-      if (aiNotes) setNotes(aiNotes);
-    } catch (err) {
-      console.error('Lỗi AI:', err);
-      alert('Không thể kết nối AI để tổng hợp. Vui lòng kiểm tra lại tin nhắn.');
-    } finally {
-      setIsSummarizing(false);
-    }
   };
 
   const parseLocationInput = (text: string) => {
@@ -282,7 +256,7 @@ function App() {
       <div className="top-bar glass-panel">
         <div className="brand-title">
           <AlertTriangle size={20} />
-          Trạm QL6
+          Bản đồ vị trí đối tượng
         </div>
         <div style={{fontSize: '0.8rem', opacity: 0.8}}>
           {points.length} dấu vết
@@ -359,15 +333,6 @@ function App() {
                 placeholder="Dán link Google Maps hoặc tin nhắn Zalo vào đây..."
                 rows={3}
               />
-              <button 
-                type="button" 
-                className="ai-btn"
-                onClick={handleAISummarize}
-                disabled={isSummarizing || !rawLocationInput}
-                title="AI Tổng hợp lộ trình"
-              >
-                {isSummarizing ? "..." : "🤖 Tổng hợp"}
-              </button>
             </div>
           </div>
           <div className="form-group">
